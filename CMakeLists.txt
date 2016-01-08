@@ -1,14 +1,7 @@
-cmake_minimum_required(VERSION 3.3)
-project(SPL_client)
+cmake_minimum_required(VERSION 2.8.4)
+project(SPL-client)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(BOOST_ROOT "C:/installation/path/include/boost-1_60/boost")
-set(BOOSTROOT "C:/installation/path/include/boost-1_60/boost")
-include_directories("C:/installation/path/include/boost-1_60/boost")
-FIND_PACKAGE(Boost REQUIRED)
-IF (Boost_FOUND)
-    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
-    ADD_DEFINITIONS( "-DHAS_BOOST" )
-ENDIF()
-set(SOURCE_FILES ConnectionHandler.h ConnectionHandler.cpp echoClient.cpp)
-add_executable(SPL_client ${SOURCE_FILES} ConnectionHandler.h)
+
+add_custom_target(SPL-client COMMAND make -C ${mytest_SOURCE_DIR}
+                         CLION_EXE_DIR=${PROJECT_BINARY_DIR})
