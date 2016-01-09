@@ -82,7 +82,6 @@ void handleInput(){
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
-                currentPendingRequests.push(MSG);
                 break;
 
             case LISTGAMES:
