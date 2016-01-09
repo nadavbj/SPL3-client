@@ -82,6 +82,7 @@ void handleInput(){
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
+                currentPendingRequests.push(MSG);
                 break;
 
             case LISTGAMES:
@@ -110,16 +111,21 @@ void handleInput(){
                 connectionHandlerPtr->sendLine(line);
                 break;
             case MSG:
-                cout<<"Enter your message"<<endl;
+                cout<<"Would you like to send a message?(y/n)"<<endl;
                 cin>>line;
-                line=enumToString(currentPendingRequest)+" "+line;
-                connectionHandlerPtr->sendLine(line);
+                if(!line.compare("y")) {
+                    cout << "Enter your message" << endl;
+                    cin >> line;
+                    line = enumToString(currentPendingRequest) + " " + line;
+                    connectionHandlerPtr->sendLine(line);
+                }
                 break;
             case STARTGAME:
                 cout<<"What game whould you like to play?"<<endl;
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
+                currentPendingRequests.push(MSG);
                 break;
             case QUIT:
                 cout<<"Would you like to quit the game?(y/n)"<<endl;
@@ -209,8 +215,8 @@ void handleSocket(){
                 currentPendingRequests.push(QUIT);
         }
         if(command==USRMSG) {
-            cout << "You were message from user :" << param << endl;
-            currentPendingRequests.push(TXTRESP);
+            cout << param << endl;
+            currentPendingRequests.push(MSG);
         }
     }
 }
