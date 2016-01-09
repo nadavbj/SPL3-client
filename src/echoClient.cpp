@@ -70,7 +70,7 @@ void handleInput(){
         currentPendingRequest=currentPendingRequests.front();
         currentPendingRequests.pop();
         switch(currentPendingRequest){
-           case NICK:
+            case NICK:
                 cout<<"Enter your name"<<endl;
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
@@ -118,8 +118,8 @@ void handleInput(){
             case STARTGAME:
                 cout<<"What game whould you like to play?"<<endl;
                 cin>>line;
-                    line=enumToString(currentPendingRequest)+" "+line;
-                    connectionHandlerPtr->sendLine(line);
+                line=enumToString(currentPendingRequest)+" "+line;
+                connectionHandlerPtr->sendLine(line);
                 break;
             case QUIT:
                 cout<<"Would you like to quit the game?(y/n)"<<endl;
@@ -129,7 +129,10 @@ void handleInput(){
                     line=enumToString(currentPendingRequest);
                     connectionHandlerPtr->sendLine(line);
                     isNotTerminated=0;
-                    delete connectionHandlerPtr;
+                    connectionHandlerPtr->close();
+                }
+                else{
+                    currentPendingRequests.push(JOIN);
                 }
                 break;
             default:
@@ -141,7 +144,7 @@ void handleInput(){
 }
 
 void handleSocket(){
-while (isNotTerminated){
+    while (isNotTerminated){
         std::string answer;
         // Get back an answer: by using the expected number of bytes (len bytes + newline delimiter)
         // We could also use: connectionHandler.getline(answer) and then get the answer without the newline char at the end
@@ -152,13 +155,18 @@ while (isNotTerminated){
             {
                 currentPendingRequests.pop();
             }
-            delete connectionHandlerPtr;
+            connectionHandlerPtr->close();
             break;
         }
-    std::size_t pos = answer.find(" ");
-    string commandStr=answer.substr(0,pos);
-    pendingRequest command=stringToEnum(commandStr);
-    string param=answer.substr(1+pos);
+        std::size_t pos = answer.find(" ");
+        string commandStr=answer.substr(0,pos);
+        pendingRequest command=stringToEnum(commandStr);
+        string param=answer.substr(1+pos);
+        if (command==QUIT){
+            cout<<"Quiting..."<<endl;
+            isNotTerminated=0;
+            connectionHandlerPtr->close();
+        }
         if(command==ASKTXT){
             cout<<"You were asked :"<<param<<endl;
             currentPendingRequests.push(TXTRESP);
@@ -195,10 +203,12 @@ while (isNotTerminated){
             }
 
         }
-        if(!command==GAMEMSG){
+        if(command==GAMEMSG){
             cout<<"You got game message :"<<param<<endl;
+            if(param.find("won")!= std::string::npos||param.find("lose")!= std::string::npos)
+                currentPendingRequests.push(QUIT);
         }
-        if(!command==USRMSG) {
+        if(command==USRMSG) {
             cout << "You were message from user :" << param << endl;
             currentPendingRequests.push(TXTRESP);
         }
