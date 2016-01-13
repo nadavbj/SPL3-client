@@ -55,7 +55,7 @@ pendingRequest stringToEnum(string s){
     return NONE;
 }
 
-
+queue<string> printBuffer;
 queue<pendingRequest> currentPendingRequests;
 int isNotTerminated=1;
 ConnectionHandler *connectionHandlerPtr;
@@ -65,6 +65,10 @@ void handleInput(){
     string line;
     pendingRequest currentPendingRequest;
     while (isNotTerminated){
+        while(!printBuffer.empty()) {
+            cout << printBuffer.front();
+            printBuffer.pop();
+        }
         if(currentPendingRequests.empty())
             continue;
         currentPendingRequest=currentPendingRequests.front();
@@ -124,7 +128,6 @@ void handleInput(){
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
-                currentPendingRequests.push(MSG);
                 break;
             case QUIT:
                 cout<<"Would you like to quit the game?(y/n)"<<endl;
@@ -143,6 +146,7 @@ void handleInput(){
             default:
                 break;
         }
+
         currentPendingRequest=NONE;
     }
 
@@ -154,37 +158,37 @@ void handleSocket(){
         // Get back an answer: by using the expected number of bytes (len bytes + newline delimiter)
         // We could also use: connectionHandler.getline(answer) and then get the answer without the newline char at the end
         if (!connectionHandlerPtr->getLine(answer)) {
-            cout << "Disconnected. Exiting...\n" << endl;
+            printBuffer.push("Disconnected. Exiting...\n");
             isNotTerminated=0;
             while (!currentPendingRequests.empty())
             {
                 currentPendingRequests.pop();
             }
             connectionHandlerPtr->close();
-            break;
+            return;
         }
         std::size_t pos = answer.find(" ");
         string commandStr=answer.substr(0,pos);
         pendingRequest command=stringToEnum(commandStr);
         string param=answer.substr(1+pos);
         if (command==QUIT){
-            cout<<"Quiting..."<<endl;
+            printBuffer.push("Quiting...");
             isNotTerminated=0;
             connectionHandlerPtr->close();
         }
         if(command==ASKTXT){
-            cout<<"You were asked :"<<param<<endl;
+            printBuffer.push("You were asked :"+param);
             currentPendingRequests.push(TXTRESP);
         }
         if(command==ASKCHOICES){
-            cout<<"You were asked :"<<param<<endl;
+            printBuffer.push("You were asked :"+param);
             currentPendingRequests.push(SELECTRESP);
         }
         if(command==SYSMSG){
 
             std::size_t pos = param.find(" ");
             string originalCommandStr=param.substr(0,pos);
-            cout<<"result for "<<originalCommandStr<<": "<<param.substr(pos+1)<<endl;
+            printBuffer.push("result for "+originalCommandStr+": "+param.substr(pos+1));
             pendingRequest originalCommand=stringToEnum(originalCommandStr);
             int wasRejected=boost::starts_with(param.substr(pos+1),"REJECTED");
             if(wasRejected){
@@ -197,6 +201,7 @@ void handleSocket(){
                         currentPendingRequests.push(JOIN);
                         break;
                     case JOIN:
+                        currentPendingRequests.push(MSG);
                         currentPendingRequests.push(LISTGAMES);
                         break;
                     case LISTGAMES:
@@ -209,12 +214,12 @@ void handleSocket(){
 
         }
         if(command==GAMEMSG){
-            cout<<"You got game message :"<<param<<endl;
+            printBuffer.push("You got game message :"+param);
             if(param.find("won")!= std::string::npos||param.find("lose")!= std::string::npos)
                 currentPendingRequests.push(QUIT);
         }
         if(command==USRMSG) {
-            cout << param << endl;
+            printBuffer.push(param);
             currentPendingRequests.push(MSG);
         }
     }
