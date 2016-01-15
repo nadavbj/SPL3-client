@@ -11,6 +11,22 @@ using namespace std;
 
 enum pendingRequest{NONE,NICK,JOIN,MSG,LISTGAMES,STARTGAME,TXTRESP,SELECTRESP,ASKCHOICES,ASKTXT,SYSMSG,GAMEMSG,USRMSG,QUIT};
 
+queue<string> printBuffer;
+queue<pendingRequest> currentPendingRequests;
+int isNotTerminated=1;
+ConnectionHandler *connectionHandlerPtr;
+
+void print(string message,int now){
+
+    if(message.length())
+        printBuffer.push(message);
+
+    if(now)
+        while(!printBuffer.empty()) {
+            cout << printBuffer.front()<<endl;
+            printBuffer.pop();
+        }
+}
 
 string enumToString(pendingRequest p){
     switch(p){
@@ -55,41 +71,35 @@ pendingRequest stringToEnum(string s){
     return NONE;
 }
 
-queue<string> printBuffer;
-queue<pendingRequest> currentPendingRequests;
-int isNotTerminated=1;
-ConnectionHandler *connectionHandlerPtr;
+
 
 
 void handleInput(){
     string line;
     pendingRequest currentPendingRequest;
     while (isNotTerminated){
-        while(!printBuffer.empty()) {
-            cout << printBuffer.front();
-            printBuffer.pop();
-        }
+        print("",1);
         if(currentPendingRequests.empty())
             continue;
         currentPendingRequest=currentPendingRequests.front();
         currentPendingRequests.pop();
         switch(currentPendingRequest){
             case NICK:
-                cout<<"Enter your name"<<endl;
+                print("Enter your name",1);
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
                 break;
 
             case JOIN:
-                cout<<"Enter the room you want to join"<<endl;
+                print("Enter the room you want to join",1);
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
                 break;
 
             case LISTGAMES:
-                cout<<"Would you like to see the list of available games?(y/n)"<<endl;
+                print("Would you like to see the list of available games?(y/n)",1);
                 cin>>line;
                 if(!line.compare("y"))
                 {
@@ -102,35 +112,35 @@ void handleInput(){
                 }
                 break;
             case TXTRESP:
-                cout<<"Enter your response"<<endl;
+                print("Enter your response",1);
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
                 break;
             case SELECTRESP:
-                cout<<"Enter your selection"<<endl;
+                print("Enter your selection",1);
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
                 break;
             case MSG:
-                cout<<"Would you like to send a message?(y/n)"<<endl;
+                print("Would you like to send a message?(y/n)",1);
                 cin>>line;
                 if(!line.compare("y")) {
-                    cout << "Enter your message" << endl;
+                    print( "Enter your message" ,1);
                     cin >> line;
                     line = enumToString(currentPendingRequest) + " " + line;
                     connectionHandlerPtr->sendLine(line);
                 }
                 break;
             case STARTGAME:
-                cout<<"What game whould you like to play?"<<endl;
+                print("What game whould you like to play?",1);
                 cin>>line;
                 line=enumToString(currentPendingRequest)+" "+line;
                 connectionHandlerPtr->sendLine(line);
                 break;
             case QUIT:
-                cout<<"Would you like to quit the game?(y/n)"<<endl;
+                print("Would you like to quit the game?(y/n)",1);
                 cin>>line;
                 if(!line.compare("y"))
                 {
@@ -158,7 +168,7 @@ void handleSocket(){
         // Get back an answer: by using the expected number of bytes (len bytes + newline delimiter)
         // We could also use: connectionHandler.getline(answer) and then get the answer without the newline char at the end
         if (!connectionHandlerPtr->getLine(answer)) {
-            printBuffer.push("Disconnected. Exiting...\n");
+            print("Disconnected. Exiting...\n",0);
             isNotTerminated=0;
             while (!currentPendingRequests.empty())
             {
@@ -172,23 +182,23 @@ void handleSocket(){
         pendingRequest command=stringToEnum(commandStr);
         string param=answer.substr(1+pos);
         if (command==QUIT){
-            printBuffer.push("Quiting...");
+            print("Quiting...",0);
             isNotTerminated=0;
             connectionHandlerPtr->close();
         }
         if(command==ASKTXT){
-            printBuffer.push("You were asked :"+param);
+            print("You were asked :"+param,0);
             currentPendingRequests.push(TXTRESP);
         }
         if(command==ASKCHOICES){
-            printBuffer.push("You were asked :"+param);
+            print("You were asked :"+param,0);
             currentPendingRequests.push(SELECTRESP);
         }
         if(command==SYSMSG){
 
             std::size_t pos = param.find(" ");
             string originalCommandStr=param.substr(0,pos);
-            printBuffer.push("result for "+originalCommandStr+": "+param.substr(pos+1));
+            print("result for "+originalCommandStr+": "+param.substr(pos+1),0);
             pendingRequest originalCommand=stringToEnum(originalCommandStr);
             int wasRejected=boost::starts_with(param.substr(pos+1),"REJECTED");
             if(wasRejected){
@@ -214,12 +224,12 @@ void handleSocket(){
 
         }
         if(command==GAMEMSG){
-            printBuffer.push("You got game message :"+param);
+            print("You got game message :"+param,0);
             if(param.find("won")!= std::string::npos||param.find("lose")!= std::string::npos)
                 currentPendingRequests.push(QUIT);
         }
         if(command==USRMSG) {
-            printBuffer.push(param);
+            print(param,0);
             currentPendingRequests.push(MSG);
         }
     }
@@ -240,11 +250,14 @@ int main (int argc, char *argv[]) {
         return 1;
     }
 
-    boost::thread thread_1(handleInput);
-    boost::thread thread_2(handleSocket);
+    boost::thread *thread_1=new boost::thread(handleInput);
+    boost::thread *thread_2=new boost::thread(handleSocket);
     currentPendingRequests.push(NICK);
-    thread_1.join();
-    thread_2.join();
+    thread_1->join();
+    thread_2->join();
+
+    delete thread_1;
+    delete thread_2;
 
 
     return 0;
