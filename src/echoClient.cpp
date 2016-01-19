@@ -250,14 +250,11 @@ int main (int argc, char *argv[]) {
         return 1;
     }
 
-    boost::thread *thread_1=new boost::thread(handleInput);
-    boost::thread *thread_2=new boost::thread(handleSocket);
+    boost::thread thread_1(handleInput);
+    boost::thread thread_2(handleSocket);
     currentPendingRequests.push(NICK);
-    thread_1->join();
-    thread_2->join();
-
-    delete thread_1;
-    delete thread_2;
+    thread_1.join();
+    thread_2.join();
 
 
     return 0;
